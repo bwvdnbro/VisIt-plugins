@@ -65,6 +65,7 @@
 
 
 using     std::string;
+using     std::stringstream;
 
 
 // ****************************************************************************
@@ -179,57 +180,72 @@ avtSWIZMOFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     hid_t file= H5Fopen(_filename, H5F_ACC_RDONLY, flag);
     herr_t status;
     
-    hid_t group = H5Gopen(file, "/PartType0", H5P_DEFAULT);
     _ndim = 3;
     
-    DataSetList ds(group);
-    
-    status = H5Gclose(group);
-    status = H5Fclose(file);
+    for(unsigned int ip = 0; ip < 6; ip++){
+        stringstream groupname;
+        groupname << "PartType" << ip;
+        htri_t exists = H5Lexists(file, groupname.str().c_str(), H5P_DEFAULT);
+        if(exists){
+            hid_t group = H5Gopen(file, groupname.str().c_str(), H5P_DEFAULT);
+            
+            stringstream meshname;
+            meshname << groupname.str() << "/Coordinates";
+        
+            DataSetList ds(group);
+            
+            status = H5Gclose(group);
 
-    avtMeshMetaData *mmd = new avtMeshMetaData;
-    mmd->name = "Coordinates";
-    mmd->spatialDimension = _ndim;
-    mmd->topologicalDimension = 0;
-    mmd->meshType = AVT_POINT_MESH;
-    mmd->numBlocks = 1;
-    md->Add(mmd);
-    
-    std::vector<std::string> scalars = ds.get_scalars();
-    for(unsigned int i = 0; i < scalars.size(); i++){
-        avtScalarMetaData *scalar = new avtScalarMetaData;
-        scalar->name = scalars[i];
-        scalar->meshName = "Coordinates";
-        scalar->centering = AVT_NODECENT;
-        scalar->hasUnits = false;
-        md->Add(scalar);
-    }
-    
-    std::vector<std::string> vectors = ds.get_vectors();
-    for(unsigned int i = 0; i < vectors.size(); i++){
-        avtVectorMetaData *vector = new avtVectorMetaData;
-        vector->name = vectors[i];
-        vector->meshName = "Coordinates";
-        vector->centering = AVT_NODECENT;
-        vector->hasUnits = false;
-        vector->varDim = 3;
-        md->Add(vector);
-    }
-    
-    std::vector<std::string> tensors = ds.get_tensors();
-    for(unsigned int i = 0; i < tensors.size(); i++){
-        for(unsigned int j = 0; j < 3; j++){
-            avtVectorMetaData *vector = new avtVectorMetaData;
-            std::stringstream name;
-            name << tensors[i] << j;
-            vector->name = name.str();
-            vector->meshName = "Coordinates";
-            vector->centering = AVT_NODECENT;
-            vector->hasUnits = false;
-            vector->varDim = 3;
-            md->Add(vector);
+            avtMeshMetaData *mmd = new avtMeshMetaData;
+            mmd->name = meshname.str();
+            mmd->spatialDimension = _ndim;
+            mmd->topologicalDimension = 0;
+            mmd->meshType = AVT_POINT_MESH;
+            mmd->numBlocks = 1;
+            md->Add(mmd);
+            
+            std::vector<std::string> scalars = ds.get_scalars();
+            for(unsigned int i = 0; i < scalars.size(); i++){
+                avtScalarMetaData *scalar = new avtScalarMetaData;
+                stringstream scalarname;
+                scalarname << groupname.str() << "/" << scalars[i];
+                scalar->name = scalarname.str();
+                scalar->meshName = meshname.str();
+                scalar->centering = AVT_NODECENT;
+                scalar->hasUnits = false;
+                md->Add(scalar);
+            }
+            
+            std::vector<std::string> vectors = ds.get_vectors();
+            for(unsigned int i = 0; i < vectors.size(); i++){
+                avtVectorMetaData *vector = new avtVectorMetaData;
+                stringstream vectorname;
+                vectorname << groupname.str() << "/" << vectors[i];
+                vector->name = vectorname.str();
+                vector->meshName = meshname.str();
+                vector->centering = AVT_NODECENT;
+                vector->hasUnits = false;
+                vector->varDim = 3;
+                md->Add(vector);
+            }
+            
+            std::vector<std::string> tensors = ds.get_tensors();
+            for(unsigned int i = 0; i < tensors.size(); i++){
+                for(unsigned int j = 0; j < 3; j++){
+                    avtVectorMetaData *vector = new avtVectorMetaData;
+                    std::stringstream name;
+                    name << groupname.str() << "/" << tensors[i] << j;
+                    vector->name = name.str();
+                    vector->meshName = meshname.str();
+                    vector->centering = AVT_NODECENT;
+                    vector->hasUnits = false;
+                    vector->varDim = 3;
+                    md->Add(vector);
+                }
+            }
         }
     }
+    status = H5Fclose(file);
 }
 
 
@@ -269,12 +285,18 @@ avtSWIZMOFileFormat::GetMesh(const char *meshname)
     status = H5Aclose(attr);
     status = H5Gclose(group);
     
+    unsigned int ip = get_particle_type(meshname);
+    
     unsigned int npart;
-    npart = npartread[0];
+    npart = npartread[ip];
     double *coords = new double[npart*3];
     
-    group = H5Gopen(file, "/PartType0", H5P_DEFAULT);
-    hid_t dataset = H5Dopen(file, "/PartType0/Coordinates", H5P_DEFAULT);
+    stringstream groupname;
+    groupname << "PartType" << ip;
+    
+    group = H5Gopen(file, groupname.str().c_str(), H5P_DEFAULT);
+    
+    hid_t dataset = H5Dopen(file, meshname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, coords);
     status = H5Dclose(dataset);
     status = H5Gclose(group);
@@ -340,13 +362,17 @@ avtSWIZMOFileFormat::GetVar(const char *varname)
     status = H5Aclose(attr);
     status = H5Gclose(group);
     
-    unsigned int npart = npartread[0];
+    unsigned int ip = get_particle_type(varname);
+    
+    unsigned int npart = npartread[ip];
 
     float *darray = new float[npart];
-    group = H5Gopen(file, "/PartType0", H5P_DEFAULT);
-    std::stringstream dname;
-    dname << "/PartType0/" << varname;
-    hid_t dataset = H5Dopen(file, dname.str().c_str(), H5P_DEFAULT);
+    
+    stringstream groupname;
+    groupname << "/PartType" << ip;
+    
+    group = H5Gopen(file, groupname.str().c_str(), H5P_DEFAULT);
+    hid_t dataset = H5Dopen(file, varname, H5P_DEFAULT);
     status = H5Dread(dataset, H5T_NATIVE_FLOAT, H5S_ALL, H5S_ALL, H5P_DEFAULT, darray);
     status = H5Dclose(dataset);
     status = H5Gclose(group);
@@ -400,19 +426,24 @@ avtSWIZMOFileFormat::GetVectorVar(const char *varname)
     status = H5Aclose(attr);
     status = H5Gclose(group);
     
-    unsigned int npart = npartread[0];
+    unsigned int ip = get_particle_type(varname);
+    
+    unsigned int npart = npartread[ip];
     
     float *darray;
     
-    group = H5Gopen(file, "/PartType0", H5P_DEFAULT);
+    stringstream groupname;
+    groupname << "/PartType" << ip;
+    
+    group = H5Gopen(file, groupname.str().c_str(), H5P_DEFAULT);
     std::stringstream dname;
     int index = -1;
     if(isdigit(varname[strlen(varname)-1])){
         index = varname[strlen(varname)-1] - '0';
-        dname << "/PartType0/" << string(varname, strlen(varname)-1);
+        dname << string(varname, strlen(varname)-1);
         darray = new float[npart*9];
     } else {
-        dname << "/PartType0/" << varname;
+        dname << varname;
         darray = new float[npart*3];
     }
     hid_t dataset = H5Dopen(file, dname.str().c_str(), H5P_DEFAULT);

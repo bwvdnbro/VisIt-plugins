@@ -166,7 +166,7 @@ std::vector<std::string>
 SWIZMOGeneralPluginInfo::GetDefaultFilePatterns() const
 {
     std::vector<std::string> defaultPatterns;
-    defaultPatterns.push_back("output*.hdf5");
+    defaultPatterns.push_back("*.hdf5");
 
     return defaultPatterns;
 }

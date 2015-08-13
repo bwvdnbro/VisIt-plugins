@@ -180,6 +180,10 @@ class avtSWIZMOFileFormat : public avtSTSDFileFormat
                                        &it, DataSetList::fill_list, this);
         }
     };
+    
+    inline unsigned int get_particle_type(const char *dsname){
+        return dsname[8]-'0';
+    }
 
   public:
                        avtSWIZMOFileFormat(const char *filename);
