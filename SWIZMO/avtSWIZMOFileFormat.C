@@ -180,6 +180,14 @@ avtSWIZMOFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
     hid_t file= H5Fopen(_filename, H5F_ACC_RDONLY, flag);
     herr_t status;
     
+    // read box size (for radius calculation
+    double box[3];
+    hid_t group = H5Gopen(file, "/Header", H5P_DEFAULT);
+    hid_t attr = H5Aopen(group, "BoxSize", H5P_DEFAULT);
+    status = H5Aread(attr, H5T_NATIVE_DOUBLE, box);
+    status = H5Aclose(attr);
+    status = H5Gclose(group);
+    
     _ndim = 3;
     
     for(unsigned int ip = 0; ip < 6; ip++){
@@ -215,6 +223,23 @@ avtSWIZMOFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
                 scalar->hasUnits = false;
                 md->Add(scalar);
             }
+            
+            // add radius expression
+            stringstream scalarname;
+            scalarname << groupname.str() << "/Radius";
+            Expression *radius = new Expression;
+            radius->SetName(scalarname.str());
+            stringstream exprstr;
+            exprstr << "sqrt((coord(<" << meshname.str() << ">)[0]-"
+                    << 0.5*box[0] << ")^2"
+                    << "+ (coord(<" << meshname.str() << ">)[1]-"
+                    << 0.5*box[1] << ")^2"
+                    << "+ (coord(<" << meshname.str() << ">)[2]-"
+                    << 0.5*box[2] << ")^2)";
+            radius->SetDefinition(exprstr.str());
+            radius->SetType(Expression::ScalarMeshVar);
+            radius->SetHidden(false);
+            md->AddExpression(radius);
             
             std::vector<std::string> vectors = ds.get_vectors();
             for(unsigned int i = 0; i < vectors.size(); i++){
