@@ -70,12 +70,12 @@ class avtSWIZMOFileFormat : public avtSTSDFileFormat
         TENSOR,
         UNKNOWN
     };
-    
+
     class DataSet{
     private:
         std::string _name;
         DataType _type;
-        
+
     public:
         DataSet(std::string name, unsigned int size) : _name(name) {
             _type = UNKNOWN;
@@ -89,33 +89,33 @@ class avtSWIZMOFileFormat : public avtSTSDFileFormat
                 _type = TENSOR;
             }
         }
-        
+
         bool is_vector(){
             return _type == VECTOR;
         }
-        
+
         bool is_scalar(){
             return _type == SCALAR;
         }
-        
+
         bool is_tensor(){
             return _type == TENSOR;
         }
-        
+
         std::string get_name(){
             return _name;
         }
     };
-    
+
     class DataSetList{
     private:
         std::vector<DataSet> _list;
-        
+
     public:
         void add(std::string name, unsigned int size){
             _list.push_back(DataSet(name, size));
         }
-        
+
         std::vector<std::string> get_scalars(){
             std::vector<std::string> scalars;
             for(unsigned int i = 0; i < _list.size(); i++){
@@ -125,7 +125,7 @@ class avtSWIZMOFileFormat : public avtSTSDFileFormat
             }
             return scalars;
         }
-        
+
         std::vector<std::string> get_vectors(){
             std::vector<std::string> vectors;
             for(unsigned int i = 0; i < _list.size(); i++){
@@ -137,7 +137,7 @@ class avtSWIZMOFileFormat : public avtSTSDFileFormat
             }
             return vectors;
         }
-        
+
         std::vector<std::string> get_tensors(){
             std::vector<std::string> tensors;
             for(unsigned int i = 0; i < _list.size(); i++){
@@ -147,40 +147,40 @@ class avtSWIZMOFileFormat : public avtSTSDFileFormat
             }
             return tensors;
         }
-        
+
         static herr_t fill_list(hid_t loc_id,
                                 const char *name,
                                 const H5L_info_t *info,
                                 void *op_data){
 
             DataSetList &list = *((DataSetList*) op_data);
-            
+
             hid_t dataset = H5Dopen(loc_id, name, H5P_DEFAULT);
             hid_t dataspace = H5Dget_space(dataset);
-            
+
             hsize_t size[2];
             hsize_t maxsize[2];
             int ndim = H5Sget_simple_extent_dims(dataspace, size, maxsize);
-            
+
             if(ndim == 1){
                 size[1] = ndim;
             }
-            
+
             H5Sclose(dataspace);
             H5Dclose(dataset);
-            
+
             list.add(std::string(name), size[1]);
 
             return 0;
         }
-        
+
         DataSetList(hid_t group){
             hsize_t it = 0;
             herr_t status = H5Literate(group, H5_INDEX_NAME, H5_ITER_NATIVE,
                                        &it, DataSetList::fill_list, this);
         }
     };
-    
+
     inline unsigned int get_particle_type(const char *dsname){
         return dsname[8]-'0';
     }
@@ -188,12 +188,12 @@ class avtSWIZMOFileFormat : public avtSTSDFileFormat
   public:
                        avtSWIZMOFileFormat(const char *filename);
     virtual           ~avtSWIZMOFileFormat() {;};
-    
+
     virtual bool          ReturnsValidCycle() const { return true; };
     virtual int           GetCycle(void);
     virtual bool          ReturnsValidTime() const { return true; };
     virtual double        GetTime(void);
-    
+
     virtual int GetCycleFromFilename(const char *f) const
     {
         // we start 3 digits and a .hdf5 extension from the end
@@ -209,14 +209,14 @@ class avtSWIZMOFileFormat : public avtSTSDFileFormat
     }
 
     virtual const char    *GetType(void)   { return "SWIZMO"; };
-    virtual void           FreeUpResources(void); 
+    virtual void           FreeUpResources(void);
 
     virtual vtkDataSet    *GetMesh(const char *);
     virtual vtkDataArray  *GetVar(const char *);
     virtual vtkDataArray  *GetVectorVar(const char *);
 
   protected:
-    const char* _filename;
+    std::string _filename;
     unsigned int _ndim;
 
     virtual void           PopulateDatabaseMetaData(avtDatabaseMetaData *);

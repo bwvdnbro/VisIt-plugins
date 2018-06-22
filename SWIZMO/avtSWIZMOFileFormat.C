@@ -102,7 +102,7 @@ avtSWIZMOFileFormat::avtSWIZMOFileFormat(const char *filename)
 int
 avtSWIZMOFileFormat::GetCycle(void)
 {
-    return GetCycleFromFilename(_filename);
+    return GetCycleFromFilename(_filename.c_str());
 }
 
 // ****************************************************************************
@@ -123,8 +123,8 @@ avtSWIZMOFileFormat::GetTime(void)
 {
     hid_t flag = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fclose_degree(flag, H5F_CLOSE_SEMI);
-    hid_t file= H5Fopen(_filename, H5F_ACC_RDONLY, flag);
-    
+    hid_t file= H5Fopen(_filename.c_str(), H5F_ACC_RDONLY, flag);
+
     double time;
     hid_t group = H5Gopen(file, "/Header", H5P_DEFAULT);
     hid_t attr = H5Aopen(group, "Time", H5P_DEFAULT);
@@ -132,7 +132,7 @@ avtSWIZMOFileFormat::GetTime(void)
     status = H5Aclose(attr);
     status = H5Gclose(group);
     status = H5Fclose(file);
-    
+
     return time;
 }
 
@@ -177,9 +177,9 @@ avtSWIZMOFileFormat::PopulateDatabaseMetaData(avtDatabaseMetaData *md)
 {
     hid_t flag = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fclose_degree(flag, H5F_CLOSE_SEMI);
-    hid_t file= H5Fopen(_filename, H5F_ACC_RDONLY, flag);
+    hid_t file= H5Fopen(_filename.c_str(), H5F_ACC_RDONLY, flag);
     herr_t status;
-    
+
     // read box size (for radius calculation
     double box[3];
     hid_t group = H5Gopen(file, "/Header", H5P_DEFAULT);
@@ -301,7 +301,7 @@ avtSWIZMOFileFormat::GetMesh(const char *meshname)
 {
     hid_t flag = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fclose_degree(flag, H5F_CLOSE_SEMI);
-    hid_t file= H5Fopen(_filename, H5F_ACC_RDONLY, flag);
+    hid_t file= H5Fopen(_filename.c_str(), H5F_ACC_RDONLY, flag);
     
     unsigned int npartread[6];
     hid_t group = H5Gopen(file, "/Header", H5P_DEFAULT);
@@ -378,7 +378,7 @@ avtSWIZMOFileFormat::GetVar(const char *varname)
 {
     hid_t flag = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fclose_degree(flag, H5F_CLOSE_SEMI);
-    hid_t file= H5Fopen(_filename, H5F_ACC_RDONLY, flag);
+    hid_t file= H5Fopen(_filename.c_str(), H5F_ACC_RDONLY, flag);
     
     unsigned int npartread[6];
     hid_t group = H5Gopen(file, "/Header", H5P_DEFAULT);
@@ -442,7 +442,7 @@ avtSWIZMOFileFormat::GetVectorVar(const char *varname)
 {
     hid_t flag = H5Pcreate(H5P_FILE_ACCESS);
     H5Pset_fclose_degree(flag, H5F_CLOSE_SEMI);
-    hid_t file= H5Fopen(_filename, H5F_ACC_RDONLY, flag);
+    hid_t file= H5Fopen(_filename.c_str(), H5F_ACC_RDONLY, flag);
     
     unsigned int npartread[6];
     hid_t group = H5Gopen(file, "/Header", H5P_DEFAULT);
